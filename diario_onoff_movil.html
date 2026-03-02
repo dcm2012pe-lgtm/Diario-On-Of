@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1923">
+<title>Diario ON/OFF — Parkinson</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0f1923;
+    --surface:   #1a2535;
+    --surface2:  #21303f;
+    --border:    #2a3d52;
+    --text:      #e8f0f8;
+    --muted:     #6b8aaa;
+    --accent:    #38bdf8;
+
+    --on:        #22c55e;
+    --on-bg:     #052e16;
+    --on-light:  #14532d;
+    --onl:       #eab308;
+    --onl-bg:    #1c1300;
+    --onl-light: #3d2d00;
+    --ong:       #f97316;
+    --ong-bg:    #1c0a00;
+    --ong-light: #3d1a00;
+    --off:       #ef4444;
+    --off-bg:    #1c0000;
+    --off-light: #3d0000;
+    --sleep:     #64748b;
+    --sleep-bg:  #0f172a;
+    --sleep-light:#1e293b;
+
+    --radius:    16px;
+    --radius-sm: 10px;
+    --font:      'DM Sans', sans-serif;
+    --mono:      'DM Mono', monospace;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* ── APP SHELL ── */
+  #app { display:flex; flex-direction:column; min-height:100dvh; }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    position: sticky; top:0; z-index:100;
+    background: rgba(15,25,35,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px 10px;
+    display: flex; align-items:center; justify-content:space-between;
+  }
+  .topbar-left { display:flex; align-items:center; gap:10px; }
+  .logo-dot {
+    width:10px; height:10px; border-radius:50%;
+    background: var(--on); box-shadow: 0 0 8px var(--on);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .topbar-title { font-size:15px; font-weight:700; letter-spacing:-.3px; }
+  .topbar-sub { font-size:11px; color:var(--muted); font-family:var(--mono); }
+  .topbar-date {
+    font-family:var(--mono); font-size:11px; color:var(--accent);
+    background: rgba(56,189,248,.1); border:1px solid rgba(56,189,248,.2);
+    padding:4px 8px; border-radius:6px;
+  }
+
+  /* ── BOTTOM NAV ── */
+  .bottom-nav {
+    position: fixed; bottom:0; left:0; right:0; z-index:100;
+    background: rgba(15,25,35,0.95);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    display:flex; padding:8px 0 max(8px, env(safe-area-inset-bottom));
+  }
+  .nav-btn {
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    background:none; border:none; color:var(--muted); cursor:pointer;
+    padding:6px 0; transition: color .2s;
+    font-family:var(--font);
+  }
+  .nav-btn.active { color:var(--accent); }
+  .nav-btn svg { width:20px; height:20px; }
+  .nav-btn span { font-size:10px; font-weight:500; }
+
+  /* ── MAIN CONTENT ── */
+  main {
+    flex:1; padding: 16px 16px calc(80px + env(safe-area-inset-bottom));
+    max-width:480px; margin:0 auto; width:100%;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display:none; }
+  .screen.active { display:block; animation: fadeIn .2s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+  /* ── SECTION HEADER ── */
+  .section-head {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .section-title { font-size:20px; font-weight:700; letter-spacing:-.5px; }
+  .section-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface); border:1px solid var(--border);
+    border-radius: var(--radius); padding:16px; margin-bottom:12px;
+  }
+  .card-label {
+    font-size:11px; font-weight:600; letter-spacing:.8px; text-transform:uppercase;
+    color:var(--muted); margin-bottom:8px;
+  }
+
+  /* ── HOME SCREEN ── */
+  .time-display {
+    text-align:center; padding:20px 0 12px;
+  }
+  .time-big {
+    font-family:var(--mono); font-size:52px; font-weight:400;
+    color:var(--text); letter-spacing:-2px; line-height:1;
+  }
+  .time-period { font-size:14px; color:var(--muted); margin-top:4px; font-family:var(--mono); }
+
+  /* Current status banner */
+  .status-banner {
+    border-radius: var(--radius); padding:18px 16px;
+    display:flex; align-items:center; gap:14px; margin-bottom:12px;
+    border:1px solid; transition: all .3s;
+  }
+  .status-icon { font-size:36px; line-height:1; flex-shrink:0; }
+  .status-name { font-size:22px; font-weight:700; line-height:1.1; }
+  .status-desc { font-size:12px; opacity:.8; margin-top:3px; }
+  .status-time { font-family:var(--mono); font-size:11px; opacity:.6; margin-top:4px; }
+
+  .status-ON    { background:var(--on-bg);    border-color:var(--on);    color:var(--on); }
+  .status-ONL   { background:var(--onl-bg);   border-color:var(--onl);   color:var(--onl); }
+  .status-ONG   { background:var(--ong-bg);   border-color:var(--ong);   color:var(--ong); }
+  .status-OFF   { background:var(--off-bg);   border-color:var(--off);   color:var(--off); }
+  .status-SLEEP { background:var(--sleep-bg); border-color:var(--sleep); color:var(--sleep); }
+  .status-NONE  { background:var(--surface);  border-color:var(--border);color:var(--muted); }
+
+  /* Big record button */
+  .record-btn {
+    width:100%; padding:18px; border-radius:var(--radius);
+    background: var(--accent); color:#0f1923;
+    border:none; font-family:var(--font); font-size:16px; font-weight:700;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+    transition: transform .1s, opacity .1s; margin-bottom:12px;
+    box-shadow: 0 4px 20px rgba(56,189,248,.3);
+  }
+  .record-btn:active { transform:scale(.97); opacity:.9; }
+
+  /* Quick stats row */
+  .stats-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px; }
+  .stat-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:12px 8px; text-align:center;
+  }
+  .stat-num { font-family:var(--mono); font-size:22px; font-weight:500; line-height:1; }
+  .stat-lbl { font-size:10px; color:var(--muted); margin-top:4px; line-height:1.3; }
+
+  /* ── RECORD MODAL ── */
+  .modal-overlay {
+    display:none; position:fixed; inset:0; z-index:200;
+    background: rgba(0,0,0,.7); backdrop-filter:blur(4px);
+    align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal {
+    background:var(--surface); border-radius:24px 24px 0 0;
+    border:1px solid var(--border); border-bottom:none;
+    width:100%; max-width:480px; padding:20px 20px max(20px,env(safe-area-inset-bottom));
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:none} }
+  .modal-handle {
+    width:36px; height:4px; background:var(--border);
+    border-radius:2px; margin:0 auto 16px;
+  }
+  .modal-title { font-size:18px; font-weight:700; text-align:center; margin-bottom:4px; }
+  .modal-sub { font-size:12px; color:var(--muted); text-align:center; margin-bottom:18px; }
+
+  /* State buttons grid */
+  .state-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .state-btn {
+    padding:16px 12px; border-radius:var(--radius-sm);
+    border:2px solid; cursor:pointer; text-align:center;
+    font-family:var(--font); transition: transform .1s, box-shadow .1s;
+  }
+  .state-btn:active { transform:scale(.96); }
+  .state-btn.selected { box-shadow:0 0 0 2px white; }
+  .state-btn-icon { font-size:28px; line-height:1; margin-bottom:4px; }
+  .state-btn-code { font-family:var(--mono); font-size:13px; font-weight:700; }
+  .state-btn-name { font-size:11px; opacity:.85; margin-top:2px; }
+
+  .state-btn-ON    { background:var(--on-bg);    border-color:var(--on);    color:var(--on); }
+  .state-btn-ONL   { background:var(--onl-bg);   border-color:var(--onl);   color:var(--onl); }
+  .state-btn-ONG   { background:var(--ong-bg);   border-color:var(--ong);   color:var(--ong); }
+  .state-btn-OFF   { background:var(--off-bg);   border-color:var(--off);   color:var(--off); }
+  .state-btn-SLEEP {
+    grid-column:1/-1; background:var(--sleep-bg);
+    border-color:var(--sleep); color:var(--sleep);
+  }
+
+  /* Severity slider */
+  .sev-section { margin-bottom:16px; }
+  .sev-label { font-size:12px; color:var(--muted); margin-bottom:8px; display:flex; justify-content:space-between; }
+  .sev-value { color:var(--text); font-weight:600; font-family:var(--mono); }
+  .sev-dots { display:flex; gap:8px; justify-content:center; }
+  .sev-dot {
+    width:44px; height:44px; border-radius:50%; border:2px solid var(--border);
+    background:var(--surface2); cursor:pointer; font-size:15px; font-weight:700;
+    color:var(--muted); display:flex; align-items:center; justify-content:center;
+    transition: all .15s; font-family:var(--mono);
+  }
+  .sev-dot.active { border-color:var(--accent); background:rgba(56,189,248,.15); color:var(--accent); transform:scale(1.1); }
+
+  /* Notes input */
+  .notes-input {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:12px; color:var(--text);
+    font-family:var(--font); font-size:14px; resize:none;
+    margin-bottom:16px; min-height:64px;
+  }
+  .notes-input:focus { outline:none; border-color:var(--accent); }
+  .notes-input::placeholder { color:var(--muted); }
+
+  /* Dose input */
+  .dose-input {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:12px; color:var(--text);
+    font-family:var(--font); font-size:14px; margin-bottom:16px;
+  }
+  .dose-input:focus { outline:none; border-color:var(--accent); }
+  .dose-input::placeholder { color:var(--muted); }
+
+  .save-btn {
+    width:100%; padding:16px; border-radius:var(--radius-sm);
+    background:var(--accent); color:#0f1923; border:none;
+    font-family:var(--font); font-size:15px; font-weight:700; cursor:pointer;
+    transition: opacity .1s;
+  }
+  .save-btn:active { opacity:.85; }
+  .save-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+  .cancel-btn {
+    width:100%; padding:12px; border-radius:var(--radius-sm);
+    background:transparent; color:var(--muted); border:1px solid var(--border);
+    font-family:var(--font); font-size:14px; cursor:pointer; margin-top:8px;
+  }
+
+  /* ── LOG SCREEN ── */
+  .day-selector {
+    display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:16px;
+    scrollbar-width:none;
+  }
+  .day-selector::-webkit-scrollbar { display:none; }
+  .day-pill {
+    flex-shrink:0; padding:8px 14px; border-radius:20px;
+    border:1px solid var(--border); background:var(--surface);
+    color:var(--muted); font-size:12px; font-weight:600; cursor:pointer;
+    white-space:nowrap; font-family:var(--mono); transition: all .15s;
+  }
+  .day-pill.active {
+    background:var(--accent); border-color:var(--accent); color:#0f1923;
+  }
+
+  .timeline { position:relative; }
+  .timeline-item {
+    display:flex; gap:12px; margin-bottom:8px; position:relative;
+    animation: fadeIn .2s ease;
+  }
+  .timeline-line {
+    position:absolute; left:19px; top:40px; bottom:-8px; width:2px;
+    background:var(--border);
+  }
+  .timeline-dot {
+    width:38px; height:38px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; border:2px solid; z-index:1;
+  }
+  .dot-ON    { background:var(--on-bg);    border-color:var(--on); }
+  .dot-ONL   { background:var(--onl-bg);   border-color:var(--onl); }
+  .dot-ONG   { background:var(--ong-bg);   border-color:var(--ong); }
+  .dot-OFF   { background:var(--off-bg);   border-color:var(--off); }
+  .dot-SLEEP { background:var(--sleep-bg); border-color:var(--sleep); }
+
+  .timeline-content {
+    flex:1; background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:10px 12px;
+  }
+  .tl-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+  .tl-state { font-size:14px; font-weight:700; }
+  .tl-time { font-family:var(--mono); font-size:11px; color:var(--muted); }
+  .tl-sev { font-size:11px; color:var(--muted); }
+  .tl-note { font-size:12px; color:var(--muted); margin-top:4px; font-style:italic; }
+  .tl-dose { font-size:11px; color:var(--accent); margin-top:3px; }
+
+  .color-ON    { color:var(--on); }
+  .color-ONL   { color:var(--onl); }
+  .color-ONG   { color:var(--ong); }
+  .color-OFF   { color:var(--off); }
+  .color-SLEEP { color:var(--sleep); }
+
+  .empty-state {
+    text-align:center; padding:40px 20px; color:var(--muted);
+  }
+  .empty-icon { font-size:48px; margin-bottom:12px; }
+  .empty-text { font-size:14px; line-height:1.6; }
+
+  /* ── STATS SCREEN ── */
+  .chart-wrap { margin-bottom:12px; }
+  .bar-chart { display:flex; gap:4px; align-items:flex-end; height:100px; padding:0 4px; }
+  .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .bar-stack { width:100%; flex:1; display:flex; flex-direction:column; justify-content:flex-end; border-radius:4px 4px 0 0; overflow:hidden; }
+  .bar-seg { width:100%; transition: height .3s; }
+  .bar-lbl { font-size:9px; color:var(--muted); font-family:var(--mono); }
+
+  .legend { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:11px; }
+  .legend-dot { width:8px; height:8px; border-radius:50%; }
+
+  .summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .summary-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:14px; text-align:center;
+  }
+  .summary-num { font-family:var(--mono); font-size:28px; font-weight:500; line-height:1; }
+  .summary-unit { font-size:11px; color:var(--muted); }
+  .summary-lbl { font-size:11px; color:var(--muted); margin-top:4px; }
+
+  /* Progress arcs */
+  .arc-wrap { display:flex; justify-content:center; margin-bottom:12px; }
+  .arc-svg { transform:rotate(-90deg); }
+  .arc-track { fill:none; stroke:var(--surface2); }
+  .arc-fill { fill:none; stroke-linecap:round; transition: stroke-dashoffset .6s ease; }
+  .arc-label-group { transform:rotate(90deg); }
+  .arc-pct { font-family:var(--mono); font-size:24px; font-weight:500; fill:var(--text); }
+  .arc-sub { font-size:11px; fill:var(--muted); }
+
+  /* ── PROFILE ── */
+  .profile-field { margin-bottom:12px; }
+  .profile-label { font-size:11px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .profile-input {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:12px; color:var(--text);
+    font-family:var(--font); font-size:14px;
+  }
+  .profile-input:focus { outline:none; border-color:var(--accent); }
+
+  .hw-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+  .hw-btn {
+    padding:10px 0; border-radius:var(--radius-sm);
+    border:2px solid var(--border); background:var(--surface2);
+    color:var(--muted); font-family:var(--mono); font-size:12px; cursor:pointer;
+    transition:all .15s; text-align:center;
+  }
+  .hw-btn.active { border-color:var(--accent); background:rgba(56,189,248,.1); color:var(--accent); }
+
+  .save-profile-btn {
+    width:100%; padding:14px; border-radius:var(--radius-sm);
+    background:var(--accent); color:#0f1923; border:none;
+    font-family:var(--font); font-size:15px; font-weight:700; cursor:pointer;
+    margin-top:8px;
+  }
+
+  /* Toast */
+  .toast {
+    position:fixed; bottom:calc(72px + env(safe-area-inset-bottom) + 12px); left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:#1e3a4a; border:1px solid var(--accent); color:var(--text);
+    padding:10px 20px; border-radius:20px; font-size:13px; font-weight:500;
+    opacity:0; transition: all .3s; white-space:nowrap; z-index:300;
+    box-shadow:0 4px 20px rgba(0,0,0,.4);
+  }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* Misc */
+  .chip {
+    display:inline-block; padding:3px 8px; border-radius:10px;
+    font-size:10px; font-weight:600; font-family:var(--mono);
+    letter-spacing:.3px;
+  }
+  .chip-good { background:var(--on-bg); color:var(--on); border:1px solid var(--on-light); }
+  .chip-bad  { background:var(--off-bg); color:var(--off); border:1px solid var(--off-light); }
+  .chip-warn { background:var(--onl-bg); color:var(--onl); border:1px solid var(--onl-light); }
+
+  /* delete swipe hint */
+  .del-btn {
+    background:none; border:none; color:var(--muted); cursor:pointer;
+    padding:4px; font-size:14px; opacity:.5; transition:opacity .15s;
+  }
+  .del-btn:hover { opacity:1; color:var(--off); }
+
+  .divider { height:1px; background:var(--border); margin:16px 0; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo-dot"></div>
+      <div>
+        <div class="topbar-title">Diario ON/OFF</div>
+        <div class="topbar-sub">Enfermedad de Parkinson</div>
+      </div>
+    </div>
+    <div class="topbar-date" id="topbar-date"></div>
+  </div>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- ═══ SCREEN: HOME ═══ -->
+    <div class="screen active" id="screen-home">
+      <div class="time-display">
+        <div class="time-big" id="clock"></div>
+        <div class="time-period" id="period-label"></div>
+      </div>
+
+      <div class="status-banner status-NONE" id="current-banner">
+        <div class="status-icon">📋</div>
+        <div>
+          <div class="status-name">Sin registro aún</div>
+          <div class="status-desc">Pulse el botón para registrar su estado actual</div>
+        </div>
+      </div>
+
+      <button class="record-btn" onclick="openModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Registrar estado ahora
+      </button>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num color-ON" id="stat-on">0h</div>
+          <div class="stat-lbl">ON hoy</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num color-OFF" id="stat-off">0h</div>
+          <div class="stat-lbl">OFF hoy</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-entries" style="color:var(--accent)">0</div>
+          <div class="stat-lbl">Registros</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Próxima dosis programada</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:24px">💊</span>
+          <div>
+            <div style="font-size:15px;font-weight:600" id="next-dose-label">—</div>
+            <div style="font-size:11px;color:var(--muted)" id="next-dose-sub">Configure en Perfil</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Guía rápida de estados</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+            <span class="chip chip-good">ON</span>
+            <span style="color:var(--muted)">Medicación funcionando. Sin disk. o con disk. leve.</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+            <span class="chip chip-warn">ONG</span>
+            <span style="color:var(--muted)">On con discinesia que molesta o interfiere.</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+            <span class="chip chip-bad">OFF</span>
+            <span style="color:var(--muted)">Medicación no funciona. Rigidez / lentitud.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN: LOG ═══ -->
+    <div class="screen" id="screen-log">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Historial</div>
+          <div class="section-sub">Registros del día</div>
+        </div>
+        <button onclick="exportCSV()" style="background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.3);color:var(--accent);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">
+          Exportar CSV
+        </button>
+      </div>
+
+      <div class="day-selector" id="day-selector"></div>
+
+      <div id="timeline-container">
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-text">No hay registros para este día.<br>Pulse "Registrar" en el inicio.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN: STATS ═══ -->
+    <div class="screen" id="screen-stats">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Estadísticas</div>
+          <div class="section-sub">Últimos 7 días</div>
+        </div>
+      </div>
+
+      <div class="card arc-wrap" style="padding:20px;">
+        <svg class="arc-svg" width="160" height="160" viewBox="0 0 160 160">
+          <circle class="arc-track" cx="80" cy="80" r="62" stroke-width="14"/>
+          <circle class="arc-fill" id="arc-fill" cx="80" cy="80" r="62"
+            stroke-width="14" stroke="var(--on)"
+            stroke-dasharray="389.6" stroke-dashoffset="389.6"/>
+          <g class="arc-label-group" transform="translate(80,80)">
+            <text class="arc-pct" id="arc-pct" text-anchor="middle" dy="-4">0%</text>
+            <text class="arc-sub" text-anchor="middle" dy="18">tiempo en ON</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="summary-grid" id="summary-grid">
+        <div class="summary-card">
+          <div class="summary-num color-ON" id="sum-on-h">0.0</div>
+          <div class="summary-unit">horas/día</div>
+          <div class="summary-lbl">Promedio ON</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-num color-OFF" id="sum-off-h">0.0</div>
+          <div class="summary-unit">horas/día</div>
+          <div class="summary-lbl">Promedio OFF</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-num color-ONG" id="sum-ong-h" style="color:var(--ong)">0.0</div>
+          <div class="summary-unit">horas/día</div>
+          <div class="summary-lbl">Disk. grave</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-num" id="sum-entries" style="color:var(--accent)">0</div>
+          <div class="summary-unit">promedio</div>
+          <div class="summary-lbl">Registros/día</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Distribución diaria (últimos 7 días)</div>
+        <div class="bar-chart" id="bar-chart"></div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--on)"></div>ON</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--onl)"></div>ON+disk leve</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--ong)"></div>ON+disk grave</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--off)"></div>OFF</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Interpretación clínica</div>
+        <div id="clinical-interp" style="font-size:13px;line-height:1.7;color:var(--muted)">
+          Registre al menos 3 días para obtener una interpretación.
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN: PROFILE ═══ -->
+    <div class="screen" id="screen-profile">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Perfil</div>
+          <div class="section-sub">Datos del paciente</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Información personal</div>
+        <div class="profile-field">
+          <div class="profile-label">Nombre / Iniciales</div>
+          <input class="profile-input" id="p-name" type="text" placeholder="Ej: J.M.G." maxlength="50">
+        </div>
+        <div class="profile-field">
+          <div class="profile-label">Neurólogo tratante</div>
+          <input class="profile-input" id="p-doc" type="text" placeholder="Nombre del médico">
+        </div>
+        <div class="profile-field">
+          <div class="profile-label">Fecha de diagnóstico</div>
+          <input class="profile-input" id="p-diag" type="date">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Estadio Hoehn & Yahr actual</div>
+        <div class="hw-grid" id="hw-grid">
+          <button class="hw-btn" data-hw="1" onclick="selectHW(this)">1</button>
+          <button class="hw-btn" data-hw="1.5" onclick="selectHW(this)">1.5</button>
+          <button class="hw-btn" data-hw="2" onclick="selectHW(this)">2</button>
+          <button class="hw-btn" data-hw="2.5" onclick="selectHW(this)">2.5</button>
+          <button class="hw-btn" data-hw="3" onclick="selectHW(this)">3</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Medicación principal</div>
+        <div class="profile-field">
+          <div class="profile-label">Fármaco + dosis (Ej: Levodopa/Carbidopa 100/25 mg)</div>
+          <input class="profile-input" id="p-med" type="text" placeholder="Levodopa/Carbidopa 100/25 mg">
+        </div>
+        <div class="profile-field">
+          <div class="profile-label">Horario de dosis (separados por comas)</div>
+          <input class="profile-input" id="p-schedule" type="text" placeholder="Ej: 7:00, 10:00, 13:00, 16:00, 19:00">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Datos del diario</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px">Total de registros</span>
+          <span style="font-family:var(--mono);color:var(--accent);font-weight:600" id="total-records">0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <span style="font-size:13px">Días registrados</span>
+          <span style="font-family:var(--mono);color:var(--accent);font-weight:600" id="total-days">0</span>
+        </div>
+        <button onclick="clearData()" style="width:100%;padding:12px;border-radius:var(--radius-sm);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--off);font-family:var(--font);font-size:13px;cursor:pointer;">
+          🗑 Borrar todos los registros
+        </button>
+      </div>
+
+      <button class="save-profile-btn" onclick="saveProfile()">Guardar perfil</button>
+    </div>
+
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="switchScreen('home')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Inicio</span>
+    </button>
+    <button class="nav-btn" id="nav-log" onclick="switchScreen('log')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span>Historial</span>
+    </button>
+    <button class="nav-btn" id="nav-stats" onclick="switchScreen('stats')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Estadísticas</span>
+    </button>
+    <button class="nav-btn" id="nav-profile" onclick="switchScreen('profile')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Perfil</span>
+    </button>
+  </nav>
+</div>
+
+<!-- RECORD MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Registrar estado</div>
+    <div class="modal-sub" id="modal-time-display"></div>
+
+    <div class="state-grid">
+      <button class="state-btn state-btn-ON" onclick="selectState('ON')">
+        <div class="state-btn-icon">✅</div>
+        <div class="state-btn-code">ON</div>
+        <div class="state-btn-name">Sin discinesia</div>
+      </button>
+      <button class="state-btn state-btn-ONL" onclick="selectState('ONL')">
+        <div class="state-btn-icon">🟡</div>
+        <div class="state-btn-code">ONL</div>
+        <div class="state-btn-name">Disk. leve (no molesta)</div>
+      </button>
+      <button class="state-btn state-btn-ONG" onclick="selectState('ONG')">
+        <div class="state-btn-icon">⚠️</div>
+        <div class="state-btn-code">ONG</div>
+        <div class="state-btn-name">Disk. grave (molesta)</div>
+      </button>
+      <button class="state-btn state-btn-OFF" onclick="selectState('OFF')">
+        <div class="state-btn-icon">🔴</div>
+        <div class="state-btn-code">OFF</div>
+        <div class="state-btn-name">Apagado / rigidez</div>
+      </button>
+      <button class="state-btn state-btn-SLEEP" onclick="selectState('SLEEP')">
+        <div class="state-btn-icon">😴</div>
+        <div class="state-btn-code">DORMIDO</div>
+        <div class="state-btn-name">Estoy durmiendo</div>
+      </button>
+    </div>
+
+    <div class="sev-section" id="sev-section">
+      <div class="sev-label">
+        <span>Severidad del estado</span>
+        <span class="sev-value" id="sev-display">—</span>
+      </div>
+      <div class="sev-dots">
+        <div class="sev-dot" onclick="selectSev(1)">1</div>
+        <div class="sev-dot" onclick="selectSev(2)">2</div>
+        <div class="sev-dot" onclick="selectSev(3)">3</div>
+        <div class="sev-dot" onclick="selectSev(4)">4</div>
+        <div class="sev-dot" onclick="selectSev(5)">5</div>
+      </div>
+    </div>
+
+    <input class="dose-input" id="dose-field" type="text"
+      placeholder="💊 Dosis tomada ahora (opcional) — Ej: Levodopa 100mg">
+
+    <textarea class="notes-input" id="notes-field"
+      placeholder="📝 Síntomas o notas (opcional) — náuseas, mareos, dolor…" rows="2"></textarea>
+
+    <button class="save-btn" id="save-btn" onclick="saveEntry()" disabled>Guardar registro</button>
+    <button class="cancel-btn" onclick="closeModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE & STORAGE
+// ═══════════════════════════════════════════════
+let entries = JSON.parse(localStorage.getItem('onoff_entries') || '[]');
+let profile = JSON.parse(localStorage.getItem('onoff_profile') || '{}');
+let selectedState = null;
+let selectedSev = null;
+let currentViewDay = null;
+
+const STATE_META = {
+  ON:    { icon:'✅', name:'ON',           desc:'Medicación activa. Sin discinesia.',          color:'var(--on)',    cls:'ON'    },
+  ONL:   { icon:'🟡', name:'ON + Disk leve', desc:'Movimientos involuntarios que no molestan.',  color:'var(--onl)',   cls:'ONL'   },
+  ONG:   { icon:'⚠️', name:'ON + Disk grave',desc:'Discinesia que interfiere con actividades.', color:'var(--ong)',   cls:'ONG'   },
+  OFF:   { icon:'🔴', name:'OFF',           desc:'Medicación no activa. Rigidez / lentitud.',   color:'var(--off)',   cls:'OFF'   },
+  SLEEP: { icon:'😴', name:'Dormido',       desc:'Período de sueño.',                           color:'var(--sleep)', cls:'SLEEP' },
+};
+
+const SEV_LABELS = ['','Mínimo','Leve','Moderado','Severo','Muy severo'];
+
+function save() {
+  localStorage.setItem('onoff_entries', JSON.stringify(entries));
+}
+
+// ═══════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+  const periods = ['Madrugada','Madrugada','Madrugada','Madrugada','Madrugada','Mañana','Mañana','Mañana','Mañana','Mañana','Mañana','Mañana','Mediodía','Tarde','Tarde','Tarde','Tarde','Tarde','Tarde','Noche','Noche','Noche','Noche','Noche'];
+  document.getElementById('period-label').textContent = periods[now.getHours()];
+  const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  document.getElementById('topbar-date').textContent = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`;
+  document.getElementById('modal-time-display').textContent = `${h}:${m} — ${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'log') renderLog();
+  if (name === 'stats') renderStats();
+  if (name === 'profile') loadProfile();
+}
+
+// ═══════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════
+function openModal() {
+  selectedState = null; selectedSev = null;
+  document.querySelectorAll('.state-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.sev-dot').forEach(d => d.classList.remove('active'));
+  document.getElementById('sev-display').textContent = '—';
+  document.getElementById('notes-field').value = '';
+  document.getElementById('dose-field').value = '';
+  document.getElementById('save-btn').disabled = true;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function closeModalOutside(e) { if (e.target.id === 'modal') closeModal(); }
+
+function selectState(code) {
+  selectedState = code;
+  document.querySelectorAll('.state-btn').forEach(b => b.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  document.getElementById('save-btn').disabled = false;
+  // hide sev for sleep
+  document.getElementById('sev-section').style.opacity = code === 'SLEEP' ? '.3' : '1';
+  if (code === 'SLEEP') { selectedSev = null; document.querySelectorAll('.sev-dot').forEach(d=>d.classList.remove('active')); document.getElementById('sev-display').textContent='—'; }
+}
+
+function selectSev(n) {
+  if (selectedState === 'SLEEP') return;
+  selectedSev = n;
+  document.querySelectorAll('.sev-dot').forEach((d,i) => d.classList.toggle('active', i+1 === n));
+  document.getElementById('sev-display').textContent = `${n} — ${SEV_LABELS[n]}`;
+}
+
+function saveEntry() {
+  if (!selectedState) return;
+  const now = new Date();
+  const entry = {
+    id: now.getTime(),
+    ts: now.toISOString(),
+    state: selectedState,
+    sev: selectedSev,
+    dose: document.getElementById('dose-field').value.trim(),
+    notes: document.getElementById('notes-field').value.trim(),
+    date: toDateStr(now),
+    time: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+  };
+  entries.unshift(entry);
+  save();
+  closeModal();
+  updateHomeStats();
+  updateBanner();
+  showToast(`✅ Registro guardado — ${STATE_META[selectedState].name}`);
+}
+
+// ═══════════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════════
+function toDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function todayEntries() {
+  return entries.filter(e => e.date === toDateStr(new Date()));
+}
+
+function updateBanner() {
+  const today = todayEntries();
+  const last = today[0];
+  const banner = document.getElementById('current-banner');
+  if (!last) {
+    banner.className = 'status-banner status-NONE';
+    banner.innerHTML = `<div class="status-icon">📋</div><div><div class="status-name">Sin registro aún</div><div class="status-desc">Pulse el botón para registrar su estado actual</div></div>`;
+    return;
+  }
+  const m = STATE_META[last.state];
+  banner.className = `status-banner status-${last.state}`;
+  banner.innerHTML = `
+    <div class="status-icon">${m.icon}</div>
+    <div>
+      <div class="status-name">${m.name}</div>
+      <div class="status-desc">${m.desc}</div>
+      <div class="status-time">Último registro: ${last.time}${last.sev ? ' · Sev. '+last.sev : ''}</div>
+    </div>`;
+}
+
+function updateHomeStats() {
+  const today = todayEntries();
+  let onH = 0, offH = 0, entries_count = today.length;
+  today.forEach(e => {
+    if (e.state === 'ON' || e.state === 'ONL') onH += 0.5;
+    if (e.state === 'OFF' || e.state === 'ONG') offH += 0.5;
+  });
+  document.getElementById('stat-on').textContent = onH.toFixed(1)+'h';
+  document.getElementById('stat-off').textContent = offH.toFixed(1)+'h';
+  document.getElementById('stat-entries').textContent = entries_count;
+  updateNextDose();
+}
+
+function updateNextDose() {
+  const sched = profile.schedule ? profile.schedule.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  if (!sched.length) { document.getElementById('next-dose-label').textContent='—'; return; }
+  const now = new Date();
+  const nowMins = now.getHours()*60 + now.getMinutes();
+  let next = null;
+  for (const t of sched) {
+    const [hh,mm] = t.split(':').map(Number);
+    const mins = hh*60+(mm||0);
+    if (mins > nowMins) { next = t; break; }
+  }
+  if (!next) next = sched[0] + ' (mañana)';
+  document.getElementById('next-dose-label').textContent = `💊 ${profile.med || 'Medicación'} — ${next}`;
+  document.getElementById('next-dose-sub').textContent = 'Según horario configurado';
+}
+
+// ═══════════════════════════════════════════════
+// LOG SCREEN
+// ═══════════════════════════════════════════════
+function renderLog() {
+  const days = [...new Set(entries.map(e=>e.date))].sort().reverse().slice(0,14);
+  const sel = document.getElementById('day-selector');
+  sel.innerHTML = '';
+  if (!days.length) {
+    document.getElementById('timeline-container').innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No hay registros aún.<br>Pulse "Registrar" en el inicio.</div></div>';
+    return;
+  }
+  if (!currentViewDay || !days.includes(currentViewDay)) currentViewDay = days[0];
+  days.forEach(d => {
+    const pill = document.createElement('button');
+    pill.className = 'day-pill' + (d === currentViewDay ? ' active' : '');
+    const dt = new Date(d+'T12:00:00');
+    pill.textContent = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+    pill.onclick = () => { currentViewDay = d; renderLog(); };
+    sel.appendChild(pill);
+  });
+  const dayEntries = entries.filter(e=>e.date===currentViewDay).sort((a,b)=> new Date(b.ts)-new Date(a.ts));
+  const tc = document.getElementById('timeline-container');
+  if (!dayEntries.length) { tc.innerHTML='<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">Sin registros este día.</div></div>'; return; }
+  tc.innerHTML = '<div class="timeline" id="timeline"></div>';
+  const tl = document.getElementById('timeline');
+  dayEntries.forEach((e, idx) => {
+    const m = STATE_META[e.state];
+    const isLast = idx === dayEntries.length-1;
+    const item = document.createElement('div');
+    item.className = 'timeline-item';
+    item.innerHTML = `
+      ${!isLast ? '<div class="timeline-line"></div>' : ''}
+      <div class="timeline-dot dot-${e.state}">${m.icon}</div>
+      <div class="timeline-content">
+        <div class="tl-top">
+          <span class="tl-state color-${e.state}">${m.name}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="tl-time">${e.time}</span>
+            <button class="del-btn" onclick="deleteEntry(${e.id})">✕</button>
+          </div>
+        </div>
+        ${e.sev ? `<div class="tl-sev">Severidad: ${e.sev}/5 — ${SEV_LABELS[e.sev]}</div>` : ''}
+        ${e.dose ? `<div class="tl-dose">💊 ${e.dose}</div>` : ''}
+        ${e.notes ? `<div class="tl-note">${e.notes}</div>` : ''}
+      </div>`;
+    tl.appendChild(item);
+  });
+}
+
+function deleteEntry(id) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  entries = entries.filter(e=>e.id!==id);
+  save(); renderLog(); updateHomeStats(); updateBanner();
+  showToast('🗑 Registro eliminado');
+}
+
+// ═══════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════
+function renderStats() {
+  const days7 = [];
+  for (let i=6;i>=0;i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    days7.push(toDateStr(d));
+  }
+  let totalOn=0, totalOff=0, totalOng=0, totalEntries=0, daysWithData=0;
+  const chartData = days7.map(day => {
+    const de = entries.filter(e=>e.date===day);
+    if (de.length) { daysWithData++; totalEntries+=de.length; }
+    let on=0,onl=0,ong=0,off=0;
+    de.forEach(e=>{
+      if(e.state==='ON') on++;
+      else if(e.state==='ONL') onl++;
+      else if(e.state==='ONG') ong++;
+      else if(e.state==='OFF') off++;
+    });
+    const total = on+onl+ong+off || 1;
+    totalOn += (on+onl)*0.5; totalOff += off*0.5; totalOng += ong*0.5;
+    return { day, on, onl, ong, off, total };
+  });
+
+  const activeDays = daysWithData || 1;
+  const avgOn = totalOn/activeDays, avgOff = totalOff/activeDays, avgOng = totalOng/activeDays;
+  const avgEntries = totalEntries/activeDays;
+  const pctOn = totalOn/(totalOn+totalOff+totalOng || 1);
+
+  document.getElementById('sum-on-h').textContent = avgOn.toFixed(1);
+  document.getElementById('sum-off-h').textContent = avgOff.toFixed(1);
+  document.getElementById('sum-ong-h').textContent = avgOng.toFixed(1);
+  document.getElementById('sum-entries').textContent = avgEntries.toFixed(1);
+
+  // Arc
+  const circ = 2*Math.PI*62;
+  const offset = circ*(1-pctOn);
+  document.getElementById('arc-fill').style.strokeDashoffset = offset;
+  document.getElementById('arc-fill').style.strokeDasharray = circ;
+  document.getElementById('arc-pct').textContent = Math.round(pctOn*100)+'%';
+
+  // Bar chart
+  const bc = document.getElementById('bar-chart');
+  bc.innerHTML = '';
+  chartData.forEach(d => {
+    const t = d.on+d.onl+d.ong+d.off||1;
+    const onPct=(d.on/t*100).toFixed(1), onlPct=(d.onl/t*100).toFixed(1), ongPct=(d.ong/t*100).toFixed(1), offPct=(d.off/t*100).toFixed(1);
+    const dt = new Date(d.day+'T12:00:00');
+    const days=['D','L','M','X','J','V','S'];
+    const col = document.createElement('div');
+    col.className='bar-col';
+    col.innerHTML=`
+      <div class="bar-stack" style="height:80px;border-radius:4px 4px 0 0;overflow:hidden;width:100%;">
+        ${d.off>0?`<div class="bar-seg" style="background:var(--off);flex:${offPct}"></div>`:''}
+        ${d.ong>0?`<div class="bar-seg" style="background:var(--ong);flex:${ongPct}"></div>`:''}
+        ${d.onl>0?`<div class="bar-seg" style="background:var(--onl);flex:${onlPct}"></div>`:''}
+        ${d.on>0?`<div class="bar-seg" style="background:var(--on);flex:${onPct}"></div>`:''}
+        ${(d.on+d.onl+d.ong+d.off)===0?`<div class="bar-seg" style="background:var(--surface2);flex:100"></div>`:''}
+      </div>
+      <div class="bar-lbl">${days[dt.getDay()]}</div>`;
+    bc.appendChild(col);
+  });
+
+  // Clinical interpretation
+  let interp = '';
+  if (daysWithData < 2) {
+    interp = 'Registre al menos 2 días para ver una interpretación clínica.';
+  } else {
+    const pctOnNum = pctOn*100;
+    const pctOngNum = totalOng/(totalOn+totalOff+totalOng||1)*100;
+    if (pctOnNum >= 75) interp = `<span style="color:var(--on)">✅ Control óptimo.</span> ${pctOnNum.toFixed(0)}% del tiempo activo en ON sin disk. grave. Mantener o ajuste fino de dosis.`;
+    else if (pctOnNum >= 50) interp = `<span style="color:var(--onl)">🟡 Control aceptable.</span> ${pctOnNum.toFixed(0)}% en ON bueno. Considerar ajuste del horario o dosis con su neurólogo.`;
+    else interp = `<span style="color:var(--off)">🔴 Control insuficiente.</span> Solo ${pctOnNum.toFixed(0)}% en ON bueno. Consulte a su neurólogo próximamente para revisar el esquema terapéutico.`;
+    if (pctOngNum > 25) interp += `<br><br><span style="color:var(--ong)">⚠️ Discinesia problemática frecuente</span> (${pctOngNum.toFixed(0)}% del tiempo). Comentar con su médico la posibilidad de ajuste de dosis.`;
+    if (avgOff > 3) interp += `<br><br><span style="color:var(--off)">⏱ Promedio de ${avgOff.toFixed(1)}h/día en OFF.</span> Por encima del umbral recomendado. Revisar horario de medicación.`;
+  }
+  document.getElementById('clinical-interp').innerHTML = interp;
+}
+
+// ═══════════════════════════════════════════════
+// PROFILE
+// ═══════════════════════════════════════════════
+function loadProfile() {
+  document.getElementById('p-name').value = profile.name||'';
+  document.getElementById('p-doc').value = profile.doc||'';
+  document.getElementById('p-diag').value = profile.diag||'';
+  document.getElementById('p-med').value = profile.med||'';
+  document.getElementById('p-schedule').value = profile.schedule||'';
+  document.querySelectorAll('.hw-btn').forEach(b => b.classList.toggle('active', b.dataset.hw===String(profile.hw)));
+  document.getElementById('total-records').textContent = entries.length;
+  document.getElementById('total-days').textContent = new Set(entries.map(e=>e.date)).size;
+}
+
+function selectHW(btn) {
+  document.querySelectorAll('.hw-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  profile.hw = btn.dataset.hw;
+}
+
+function saveProfile() {
+  profile.name = document.getElementById('p-name').value.trim();
+  profile.doc = document.getElementById('p-doc').value.trim();
+  profile.diag = document.getElementById('p-diag').value;
+  profile.med = document.getElementById('p-med').value.trim();
+  profile.schedule = document.getElementById('p-schedule').value.trim();
+  localStorage.setItem('onoff_profile', JSON.stringify(profile));
+  showToast('✅ Perfil guardado');
+  updateNextDose();
+}
+
+// ═══════════════════════════════════════════════
+// EXPORT CSV
+// ═══════════════════════════════════════════════
+function exportCSV() {
+  if (!entries.length) { showToast('No hay registros para exportar'); return; }
+  const header = 'Fecha,Hora,Estado,Severidad,Dosis,Notas';
+  const rows = entries.map(e => [e.date,e.time,e.state,e.sev||'',`"${e.dose||''}"`,`"${e.notes||''}"`].join(',')).join('\n');
+  const csv = header+'\n'+rows;
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `diario_onoff_${toDateStr(new Date())}.csv`;
+  a.click();
+  showToast('📥 CSV descargado');
+}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+function clearData() {
+  if (!confirm('¿Borrar TODOS los registros? Esta acción no se puede deshacer.')) return;
+  entries = []; save(); updateHomeStats(); updateBanner();
+  showToast('🗑 Datos borrados');
+  loadProfile();
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+updateBanner();
+updateHomeStats();
+</script>
+</body>
+</html>
