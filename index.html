@@ -532,7 +532,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, deleteDoc,
-  onSnapshot, query, orderBy, writeBatch
+  onSnapshot, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -619,11 +619,12 @@ function setSyncDot(state){ // 'ok' | 'syncing' | 'error'
 function subscribeData(){
   const uid = currentUser.uid;
 
-  // Registros — ordenados por fecha+hora desc
+  // Registros — sin orderBy compuesto (se ordena en cliente)
   const rRef = collection(db, 'users', uid, 'registros');
-  const rQ   = query(rRef, orderBy('fecha','desc'), orderBy('hora','desc'));
-  unsubR = onSnapshot(rQ, snap => {
+  unsubR = onSnapshot(rRef, snap => {
     R = snap.docs.map(d=>({id:d.id,...d.data()}));
+    // Ordenar en cliente por fecha+hora descendente
+    R.sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
     renderHistorial();
     setSyncDot('ok');
   }, err => { console.error(err); setSyncDot('error'); });
